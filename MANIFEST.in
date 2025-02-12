@@ -1,0 +1,14 @@
+# Include documentation and licensing
+include README.md
+include LICENSE.md
+
+# Include source code
+recursive-include src *.py
+recursive-include src/trakt_hub *.py
+recursive-include src/trakt_hub/trakt_utils *.py
+
+# Include tests
+recursive-include tests *.py
+
+# Exclude unwanted files
+global-exclude __pycache__ *.pyc *.pyo
