@@ -1,5 +1,6 @@
 from .functions import (
     get_anticipated,
+    get_boxoffice,
     get_popular,
     get_trending,
     is_anticipated,

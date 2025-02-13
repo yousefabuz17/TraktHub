@@ -31,3 +31,8 @@ class CHException(BaseException):
 class THException(BaseException):
     def __init__(self, *args):
         super().__init__(*args)
+
+
+class CLIException(BaseException):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)

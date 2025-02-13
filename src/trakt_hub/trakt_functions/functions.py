@@ -1,6 +1,7 @@
-from inspect import isfunction
+import inspect
 
-from ..trakt_utils.type_hints import LiteralCategory, MoviesOrShows
+from ..trakt_hub import TraktHubViewer
+from ..trakt_utils.type_hints import LiteralCategory, MoviesOnly, MoviesOrShows
 from .wrappers import (
     is_functions_wrapper,
     query_viewer_wrapper,
@@ -24,6 +25,11 @@ def get_popular(category: MoviesOrShows) -> dict:
 @validate_args_wrapper()
 @trakt_viewer_wrapper("anticipated")
 def get_anticipated(category: MoviesOrShows) -> dict:
+    pass
+
+
+@trakt_viewer_wrapper("boxoffice")
+def get_boxoffice(category: MoviesOnly) -> dict:
     pass
 
 
@@ -51,13 +57,17 @@ def trakt_query(query: str, category: LiteralCategory) -> dict:
     pass
 
 
+def printer_(*args, **kwargs):
+    return TraktHubViewer.print_contents(*args, **kwargs)
+
+
 __all__ = tuple(
     k
     for k, v in globals().items()
     if all(
         (
             (k not in ("isfunction", "wraps")),
-            isfunction(v),
+            inspect.isfunction(v),
             not any((k.startswith("_"), k.endswith("wrapper"))),
         )
     )

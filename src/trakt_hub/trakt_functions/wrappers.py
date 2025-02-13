@@ -6,6 +6,16 @@ from ..trakt_utils.type_hints import Callable
 from ..trakt_utils.utils import best_match
 
 
+def _get_qc(*args, **kwargs):
+    return (
+        kwargs.get(*i)
+        for i in (
+            ("query", args[0] if args else ""),
+            ("category", args[1] if args else ""),
+        )
+    )
+
+
 def validate_args_wrapper(all_args: bool = False):
     def decorator(func):
         @wraps(func)
@@ -29,6 +39,8 @@ def trakt_viewer_wrapper(get_type):
         @wraps(func)
         def wrapper(*args, **kwargs):
             cat = kwargs.get("category", *args)
+            if get_type == "boxoffice":
+                cat = "movies"
             return TraktHub(category=cat).track_hub(get_type)
 
         return wrapper
@@ -40,15 +52,9 @@ def is_functions_wrapper(get_func: Callable):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            q, cat = (
-                kwargs.get(*i)
-                for i in (
-                    ("query", args[0] if args else ""),
-                    ("category", args[1] if args else ""),
-                )
-            )
-            current_now = get_func(cat)
-            titles = [i["Title"] for i in current_now.values()]
+            q, cat = _get_qc(*args, **kwargs)
+            get_func_contents = get_func(cat)
+            titles = [i["Title"] for i in get_func_contents.values()]
             if not (found_match := best_match(q, titles)):
                 return False
             _, score, _ = found_match
@@ -62,13 +68,11 @@ def is_functions_wrapper(get_func: Callable):
 def query_viewer_wrapper(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        q, cat = (kwargs.get(*i) for i in (("query", args[0]), ("category", args[1])))
+        q, cat = _get_qc(*args, **kwargs)
         tk_hub = TraktHub(query=q, category=cat)
-        if cat == "people":
-            return tk_hub.track_person()
-        return tk_hub.search()
+        return getattr(tk_hub, ["search", "track_person"][cat == "people"])()
 
     return wrapper
 
 
-__all__ = tuple(k for k, v in globals().items() if k.endswith("wrapper"))
+__all__ = tuple(k for k in globals() if k.endswith("wrapper"))

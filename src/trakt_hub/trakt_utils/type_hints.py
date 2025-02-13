@@ -12,6 +12,7 @@ from typing import (
 
 PathLike = Union[str, Path]
 StrTuple = tuple[str, ...]
+MoviesOnly = Literal["movies"]
 MoviesOrShows = Literal["movies", "shows"]
 LiteralCategory = Literal["people", "movies", "shows", "calendars"]
 LiteralSection = Literal[

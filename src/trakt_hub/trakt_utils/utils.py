@@ -1,4 +1,5 @@
 import calendar
+import shutil
 from bs4 import BeautifulSoup
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from datetime import datetime as dt
@@ -42,6 +43,11 @@ def best_match(s: str, value: Iterable[str], extract_single: bool = True, **kwar
     return pe(s.lower(), (i.lower() for i in value), scorer=fuzz.ratio, **kwargs)
 
 
+def get_terminal_size(col_or_lines: str = ""):
+    ts = shutil.get_terminal_size()
+    return getattr(ts, col_or_lines) if col_or_lines else ts
+
+
 def soupify(contents: str, markup: str = "html.parser"):
     def _soup(*args):
         try:
@@ -70,12 +76,15 @@ def executor(func: Callable, *args, **kwargs):
     yield from _exec.map(func, *args, **kwargs)
 
 
-def get_datetime(increment_day: int = 0):
+def get_datetime(increment_day: int = 0, with_time: bool = False):
     _dt = dt.now()
     date, day = _dt.date(), _dt.day
     try:
-        return date.replace(day=day + increment_day)
+        if not with_time:
+            return date.replace(day=day + increment_day)
+        return _dt.strftime("%m/%d/%Y %I:%M %p")
     except ValueError:
+        # For cases above 31 days
         month = calendar.month_name[date.month]
         month_range = calendar.monthrange(date.year, date.month)[1]
         raise CHException(

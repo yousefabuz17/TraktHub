@@ -1,4 +1,5 @@
 import re
+import sys
 from collections import OrderedDict
 from functools import partial, wraps
 from operator import itemgetter
@@ -13,7 +14,7 @@ from .trakt_utils.type_hints import (
     StrTuple,
 )
 from .trakt_utils.exceptions import CHException, THException
-from .trakt_utils.utils import BeautifulSoup, enumerate_at_one, get_datetime
+from .trakt_utils.utils import BeautifulSoup, enumerate_at_one, get_datetime, get_terminal_size
 
 
 class TraktHubViewer:
@@ -127,8 +128,10 @@ class TraktHubViewer:
                             )
                         ).group(2),
                         "Network": i.find(class_="generic").text,
-                        "Season": _title_contents.group(1).split("x")[0],
-                        "Episode": _title_contents.group(1).split("x")[1],
+                        **{
+                            k: _title_contents.group(1).split("x")[v]
+                            for k, v in (("Season", 0), ("Episode", 1))
+                        },
                         "Time": i.h4.get_text(strip=True),
                     }
                     for idx, i in _enum(calendar_shows)
@@ -178,6 +181,69 @@ class TraktHubViewer:
 
     def get_contents(self):
         return self._clean_contents()
+
+    @staticmethod
+    def print_contents(contents):
+        if isinstance(contents, (bool, str)):
+            # For cases for all:
+            #   ~ '--<arg>' commands (Returned obj is type str)
+            #   ~ Is-Functions (Returned obj is type boolean)
+            print(contents)
+            sys.exit()
+        
+        cli_args = sys.argv
+        function_name = query = cli_args[1]
+        terminal_size = get_terminal_size()
+        wspace = ''.center(terminal_size.lines // 2)
+        current_dt = get_datetime(with_time=True)
+        # sep = "-" * (terminal_size.columns // 2)
+        sep = '-'.center(terminal_size.columns // 2)
+        header = "{spacing}TraktHub - {} {}"
+        if function_name.startswith("get"):
+            # All Get-Functions (Returned obj is type dict)
+            
+            # 'get-trending' -> 'trending'
+            f_name = function_name.split("-")[-1]
+            if function_name.endswith("boxoffice"):
+                f_name = "Current"
+                cat = "boxoffice"
+            else:
+                # 'movies' or 'shows'
+                cat = cli_args[2][3:]
+            print(sep)
+            print(
+                header.format(
+                    *(i.title() for i in (f_name, cat)),
+                    spacing=wspace,
+                )
+            )
+            print(sep)
+            print(f"Time Now: {current_dt}", end="\n\n")
+            
+            # popular and anticipated only have title and year
+            common_keys = ("Title", "Year")
+            diff_set = lambda x: len(set(x) - set(common_keys))
+            for idx, v in contents.items():
+                match diff_set(v):
+                    case 0:
+                        # Get-Popular/Anticipated functions
+                        print(f"{idx}: {v['Title']} ({v['Year']})")
+                    case 1:
+                        # Boxoffice
+                        def _format(*args):
+                            print(
+                                f"{idx}-{v['Title']} ({v['Year']})",
+                                "\n{:>5}• {}: {}".format(' ', *args)
+                            )
+                        uncommon_keys = ("Total Budget", "Watch Count")
+                        
+                        if cat == "boxoffice":
+                            _format(uncommon_keys[0], v[uncommon_keys[0]])
+                        elif cat in ("movies", "shows"):
+                            _format(uncommon_keys[1], v[uncommon_keys[1]])
+        elif query in ("-q", "--query"):
+            cat_arg, cat_value = cli_args[3:] # '-c', <category>
+            
 
 
 class TraktHub:
@@ -295,9 +361,16 @@ class TraktHub:
             "div",
             class_="col-md-10 col-md-offset-2 col-sm-9 col-sm-offset-3 mobile-title",
         ).h1.get_text(separator="#")
-        flix_title, release_year, flix_mature_rating = map(
-            str.strip, flix_title_contents.split("#")
-        )
+        
+        try:
+            flix_title, release_year, flix_mature_rating = map(
+                str.strip, flix_title_contents.split("#")
+            )
+        except ValueError :
+            raise THException(
+                "Unable to parse the contents for the provided query."
+                "\nSome contents may be missing on URL the page."
+            )
 
         loved_percentage, num_of_votes = (
             parsed_contents.find("div", class_=i).text for i in ("rating", "votes")
