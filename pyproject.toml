@@ -1,0 +1,22 @@
+[metadata]
+name = "trakt_hub"
+version = "0.0.1"
+author = "Yousef Abuzahrieh"
+author_email = "yousefzahrieh17@gmail.com"
+description = "A package for interacting with trakt.tv"
+long_description = "file: README.md"
+long_description_content_type = "text/markdown"
+url = "https://github.com/yousefabuz17/TraktHub"
+download_url = "https://github.com/yousefabuz17/TraktHub.git"
+platforms = ["Windows", "Linux", "MacOS"]
+license = "Apache Software License"
+python_requires = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Utilities"
+]

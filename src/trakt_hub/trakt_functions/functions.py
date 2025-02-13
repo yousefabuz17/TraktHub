@@ -1,24 +1,29 @@
 from inspect import isfunction
 
-from .wrappers import *
-from ..trakt_utils.type_hints import LiteralCategory
+from ..trakt_utils.type_hints import LiteralCategory, MoviesOrShows
+from .wrappers import (
+    is_functions_wrapper,
+    query_viewer_wrapper,
+    trakt_viewer_wrapper,
+    validate_args_wrapper,
+)
 
 
 @validate_args_wrapper()
 @trakt_viewer_wrapper("trending")
-def get_trending(category: LiteralCategory) -> dict:
+def get_trending(category: MoviesOrShows) -> dict:
     pass
 
 
 @validate_args_wrapper()
 @trakt_viewer_wrapper("popular")
-def get_popular(category: LiteralCategory) -> dict:
+def get_popular(category: MoviesOrShows) -> dict:
     pass
 
 
 @validate_args_wrapper()
 @trakt_viewer_wrapper("anticipated")
-def get_anticipated(category: LiteralCategory) -> dict:
+def get_anticipated(category: MoviesOrShows) -> dict:
     pass
 
 
@@ -42,7 +47,7 @@ def is_anticipated(query: str, category: LiteralCategory) -> bool:
 
 @validate_args_wrapper(all_args=True)
 @query_viewer_wrapper
-def trakt_query(query: str, category: LiteralCategory):
+def trakt_query(query: str, category: LiteralCategory) -> dict:
     pass
 
 

@@ -7,13 +7,14 @@ from aiohttp.client_exceptions import (
     InvalidURL,
     ServerDisconnectedError,
 )
+from argparse import ArgumentParser
 from async_lru import alru_cache
 from bs4 import BeautifulSoup
 
-from configparser import ConfigParser, ParsingError
 from dataclasses import dataclass, field
-from functools import cache, cached_property
+from functools import cache, cached_property, partial
 from pathlib import Path
+import tomllib
 
 from .exceptions import (
     ConfigException,
@@ -56,6 +57,7 @@ class ConfigFileParser:
     @staticmethod
     def _check_args(fp: PathLike, section: str = ""):
         valid_path = validate_path(fp, is_file=True)
+
         if not isinstance(section, str):
             raise FileException(
                 f"The provided section {section!r} is not a valid section and must be a string."
@@ -72,16 +74,13 @@ class ConfigFileParser:
         self._config_file_path = fp
 
         try:
-            config_p = ConfigParser()
-            config_p.read(fp)
-        except ParsingError:
+            config_p = tomllib.load(open(fp, "rb"))
+        except Exception as e:
             raise ParserException(
-                f"There was an error parsing the config file {fp!r}."
-                "\nPlease check the file is correctly formatted."
+                f"There was an error parsing the config file {fp!r}." f"\n{e}"
             )
 
         full_config = {k.lower(): dict(v) for k, v in dict(config_p).items()}
-        del full_config["default"]
 
         if section:
             if section not in full_config:
@@ -208,6 +207,11 @@ class APIParser:
                 json_format=self.json_format, headers=self.headers
             )
         return self._contents
+
+
+def _metadata_parser():
+    pyproject_path = validate_path(Path(__file__).parents[3] / "pyproject.toml")
+    return ConfigFileParser(pyproject_path).metadata
 
 
 __all__ = ("APIParser", "ConfigFileParser")

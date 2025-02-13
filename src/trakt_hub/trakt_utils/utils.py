@@ -39,7 +39,6 @@ def clean_url(url: str):
 
 def best_match(s: str, value: Iterable[str], extract_single: bool = True, **kwargs):
     pe = getattr(process, "extract" if not extract_single else "extractOne")
-    print(value)
     return pe(s.lower(), (i.lower() for i in value), scorer=fuzz.ratio, **kwargs)
 
 

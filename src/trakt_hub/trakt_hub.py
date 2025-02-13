@@ -484,41 +484,6 @@ class TraktHub:
         return organized_data
 
 
-# from pprint import pprint as print
-
-# th = TraktHub(category="shows")
-# trending = th.track_hub("trending")
-# print(trending)
-
-# th = TraktHub(category="shows")
-# popular = th.track_hub("popular")
-# print(popular)
-
-# th = TraktHub(category="shows")
-# anticipated = th.track_hub("anticipated")
-# print(anticipated)
-
-# bo = TraktHub(category="movies")  # boxoffice only for movies
-# boxoffice = bo.track_hub("boxoffice")
-# print(boxoffice)
-
-# Calendars
-# ca = TraktHub(category="calendars")
-# ca_contents = ca.track_hub("shows")
-# print(ca_contents)
-
-
-# # People
-# people = TraktHub(query="Keanu Reeves", category="people")
-# print(people.track_person())
-# people = TraktHub(query="the matrix 1999", category="movies")
-# print(people.search())
-# people = TraktHub(query="moana 2 2024", category="movies")
-# print(people.search())
-# people = TraktHub(query="Apocalypse Now 1979", category="movies")
-# print(people.search())
-
-
 __all__ = (
     "TraktHub",
     "TraktHubViewer",

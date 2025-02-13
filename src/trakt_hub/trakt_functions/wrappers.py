@@ -41,7 +41,11 @@ def is_functions_wrapper(get_func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
             q, cat = (
-                kwargs.get(*i) for i in (("query", args[0]), ("category", args[1]))
+                kwargs.get(*i)
+                for i in (
+                    ("query", args[0] if args else ""),
+                    ("category", args[1] if args else ""),
+                )
             )
             current_now = get_func(cat)
             titles = [i["Title"] for i in current_now.values()]
