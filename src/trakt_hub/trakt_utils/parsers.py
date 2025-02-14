@@ -1,4 +1,5 @@
 import asyncio
+import tomllib
 from aiohttp import ClientSession, TCPConnector
 from aiohttp.client_exceptions import (
     ClientConnectionError,
@@ -7,14 +8,13 @@ from aiohttp.client_exceptions import (
     InvalidURL,
     ServerDisconnectedError,
 )
-from argparse import ArgumentParser
 from async_lru import alru_cache
 from bs4 import BeautifulSoup
 
 from dataclasses import dataclass, field
-from functools import cache, cached_property, partial
+from functools import cache, cached_property
 from pathlib import Path
-import tomllib
+
 
 from .exceptions import (
     ConfigException,

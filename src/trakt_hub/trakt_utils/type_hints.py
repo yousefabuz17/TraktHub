@@ -9,7 +9,7 @@ from typing import (
     Union,
 )
 
-
+IntOrStr = Union[int, str]
 PathLike = Union[str, Path]
 StrTuple = tuple[str, ...]
 MoviesOnly = Literal["movies"]

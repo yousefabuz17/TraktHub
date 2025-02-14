@@ -1,19 +1,14 @@
 from functools import wraps
+from itertools import chain
 
 from ..trakt_hub import TraktHub
 from ..trakt_utils.exceptions import THException
-from ..trakt_utils.type_hints import Callable
-from ..trakt_utils.utils import best_match
+from ..trakt_utils.utils import best_match, popkwargs, page_executor
 
 
-def _get_qc(*args, **kwargs):
-    return (
-        kwargs.get(*i)
-        for i in (
-            ("query", args[0] if args else ""),
-            ("category", args[1] if args else ""),
-        )
-    )
+def _get_args(args=("query", "category"), **kwargs):
+    kwargs.update({"default_value": ""})
+    return popkwargs(*args, **kwargs)
 
 
 def validate_args_wrapper(all_args: bool = False):
@@ -34,27 +29,27 @@ def validate_args_wrapper(all_args: bool = False):
     return decorator
 
 
-def trakt_viewer_wrapper(get_type):
+def trakt_viewer_wrapper(get_func: str):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
             cat = kwargs.get("category", *args)
-            if get_type == "boxoffice":
+            if get_func == "boxoffice":
                 cat = "movies"
-            return TraktHub(category=cat).track_hub(get_type)
+            return page_executor(TraktHub, cat, get_func)
 
         return wrapper
 
     return decorator
 
 
-def is_functions_wrapper(get_func: Callable):
+def is_functions_wrapper(get_func: str):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            q, cat = _get_qc(*args, **kwargs)
-            get_func_contents = get_func(cat)
-            titles = [i["Title"] for i in get_func_contents.values()]
+            q, cat, kwargs = _get_args(*args, **kwargs)
+            executed_pages = page_executor(TraktHub, cat, get_func)
+            titles = [i["Title"] for i in executed_pages.values()]
             if not (found_match := best_match(q, titles)):
                 return False
             _, score, _ = found_match
@@ -65,10 +60,10 @@ def is_functions_wrapper(get_func: Callable):
     return decorator
 
 
-def query_viewer_wrapper(func):
-    @wraps(func)
+def query_viewer_wrapper(__func):
+    @wraps(__func)
     def wrapper(*args, **kwargs):
-        q, cat = _get_qc(*args, **kwargs)
+        q, cat, kwargs = _get_args(*args, **kwargs)
         tk_hub = TraktHub(query=q, category=cat)
         return getattr(tk_hub, ["search", "track_person"][cat == "people"])()
 

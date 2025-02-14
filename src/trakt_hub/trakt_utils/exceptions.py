@@ -23,11 +23,6 @@ class ParserException(BaseException):
         super().__init__(*args)
 
 
-class CHException(BaseException):
-    def __init__(self, *args):
-        super().__init__(*args)
-
-
 class THException(BaseException):
     def __init__(self, *args):
         super().__init__(*args)

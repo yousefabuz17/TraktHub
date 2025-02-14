@@ -1,7 +1,6 @@
 from argparse import ArgumentParser
 
 from .parsers import _metadata_parser
-from .exceptions import CLIException
 from ..trakt_functions.functions import (
     get_anticipated,
     get_boxoffice,
@@ -11,7 +10,7 @@ from ..trakt_functions.functions import (
     is_popular,
     is_trending,
     trakt_query,
-    _printer,
+    _printer
 )
 
 
@@ -42,6 +41,7 @@ def cli_parser():
     main_args("--license", help="Display the license of 'trakt_hub'.")
     main_args("--description", help="Display the description of 'trakt_hub'.")
     main_args("--url", help="Display the GitHub URL of 'trakt_hub'.")
+    main_args("--verbose", help="Enable verbose output.")
 
     # Get-Boxoffice
     boxoffice = sub_parsers.add_parser(
@@ -103,11 +103,14 @@ def cli_parser():
     )
 
     metadata = _metadata_parser()
+    
     args = arg_parser.parse_args()
 
     def mult_args(func):
-        args_attr = lambda x: getattr(args, x[x[-1] in args.__dict__])
-        q, c = map(args_attr, (["q", "query"], ["c", "category"]))
+        q, c = map(
+            lambda x: getattr(args, x[x[-1] in args.__dict__]),
+            (["q", "query"], ["c", "category"]),
+        )
         return func(query=q, category=c)
 
     # Main-Arguments
@@ -122,7 +125,7 @@ def cli_parser():
     elif args.url:
         return metadata["url"]
 
-    # Get-Arguments
+    # 'get_<category>' function Arguments
     elif args.command == "get-boxoffice":
         return get_boxoffice("movies")
     elif args.command == "get-trending":
@@ -138,7 +141,7 @@ def cli_parser():
             return get_anticipated("shows")
         return get_anticipated("movies")
 
-    # Is-Arguments
+    # 'is_<category>' function Arguments
     elif args.command == "is-trending":
         return mult_args(is_trending)
     elif args.command == "is-popular":
@@ -146,7 +149,7 @@ def cli_parser():
     elif args.command == "is-anticipated":
         return mult_args(is_anticipated)
 
-    # Main TraktHub
+    # Main Query for TraktHub
     return mult_args(trakt_query)
 
 

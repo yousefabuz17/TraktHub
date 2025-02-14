@@ -3,12 +3,13 @@ import shutil
 from bs4 import BeautifulSoup
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from datetime import datetime as dt
+from functools import partial
 from pathlib import Path
 from string import punctuation
 from urllib.parse import urlparse
 from rapidfuzz import fuzz, process
 
-from .exceptions import CHException, ExecutorException, FileException, ParserException
+from .exceptions import ExecutorException, FileException, ParserException, THException
 from .type_hints import Any, Callable, Iterable, PathLike
 
 
@@ -65,15 +66,39 @@ def popkwargs(*args, **kwargs):
     return *(kwargs.pop(k, df_value) for k in args), kwargs
 
 
+def page_merger(page_contents):
+    first_page = next(page_contents)
+    starting_idx = len(first_page) + 1
+
+    for page in page_contents:
+        for idx, values in enumerate(page.values(), start=starting_idx):
+            first_page[idx] = values
+
+    return first_page
+
+
+def page_executor(
+    thub: Callable, category: str, func_type: str, merge_pages: bool = True
+):
+    # func_type -> Any of of the 'Get' functions
+    thub_func = lambda pg: thub(category=category, page_number=pg).track_hub(func_type)
+    page_contents = executor(thub_func, range(1, 6))
+    if merge_pages:
+        return page_merger(page_contents)
+    return page_contents
+
+
 def executor(func: Callable, *args, **kwargs):
     max_w, epool, kwargs = popkwargs("max_workers", "epool", **kwargs)
+    maxw_p = lambda p: partial(p, max_workers=max_w)
     if all((max_w is not None, not isinstance(max_w, int))):
         raise ExecutorException(
             f"The provided {max_w = !r} is not a valid argument and must be {None!r} or a positive integer."
         )
-
-    _exec = [ThreadPoolExecutor, ProcessPoolExecutor][epool == "ppex"]
-    yield from _exec.map(func, *args, **kwargs)
+    _exec = list(map(maxw_p, (ThreadPoolExecutor, ProcessPoolExecutor)))[
+        epool == "ppex"
+    ]
+    yield from _exec().map(func, *args, **kwargs)
 
 
 def get_datetime(increment_day: int = 0, with_time: bool = False):
@@ -87,7 +112,7 @@ def get_datetime(increment_day: int = 0, with_time: bool = False):
         # For cases above 31 days
         month = calendar.month_name[date.month]
         month_range = calendar.monthrange(date.year, date.month)[1]
-        raise CHException(
+        raise THException(
             f"Cannot increment the day by {increment_day} as it exceeds the month of {month} which has {month_range} days."
         )
 

@@ -34,19 +34,19 @@ def get_boxoffice(category: MoviesOnly) -> dict:
 
 
 @validate_args_wrapper(all_args=True)
-@is_functions_wrapper(get_trending)
+@is_functions_wrapper("trending")
 def is_trending(query: str, category: LiteralCategory) -> bool:
     pass
 
 
 @validate_args_wrapper(all_args=True)
-@is_functions_wrapper(get_popular)
+@is_functions_wrapper("popular")
 def is_popular(query: str, category: LiteralCategory) -> bool:
     pass
 
 
 @validate_args_wrapper(all_args=True)
-@is_functions_wrapper(get_anticipated)
+@is_functions_wrapper("anticipated")
 def is_anticipated(query: str, category: LiteralCategory) -> bool:
     pass
 

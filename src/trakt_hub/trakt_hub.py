@@ -4,16 +4,18 @@ from collections import OrderedDict
 from functools import partial, wraps
 from operator import itemgetter
 from string import punctuation
+from time import sleep
 
 from .trakt_utils.parsers import APIParser
 from .trakt_utils.type_hints import (
+    IntOrStr,
     Literal,
     LiteralCategory,
     LiteralSection,
     Optional,
     StrTuple,
 )
-from .trakt_utils.exceptions import CHException, THException
+from .trakt_utils.exceptions import THException
 from .trakt_utils.utils import (
     BeautifulSoup,
     enumerate_at_one,
@@ -77,6 +79,8 @@ class TraktHubViewer:
                 for idx, i in _enum(contents)
                 if (match := pattern.match(i))
             }
+
+        cleaned_contents = None
 
         match (self._category, self._section):
             # ^ -------------------Match Case for (Movies/Shows)----------------- ^ #
@@ -197,6 +201,12 @@ class TraktHubViewer:
             sys.exit()
 
         cli_args = sys.argv
+        verbose = False
+        
+        if "--verbose" in cli_args:
+            cli_args.remove("--verbose")
+            verbose = True
+        
         function_name = query = cli_args[1]
         terminal_col, _terminal_lines = get_terminal_size()
 
@@ -210,8 +220,13 @@ class TraktHubViewer:
             ).center(((terminal_col + len(header)) // 2) - len("TraktHub"), "-")
             print(header, end="\n\n")
             print(sep)
-            print(f"Time Now: {current_dt}")
+            print(f"Time Now: {current_dt}", end="\n\n")
 
+        if verbose:
+            print("~ Trakt.tv has been successfully accessed and the data has been retrieved.")
+            print("~ Formatting the data for display...")
+            sleep(1)
+        
         if function_name.startswith("get"):
             # All Get-Functions (Returned obj is type dict)
 
@@ -224,6 +239,12 @@ class TraktHubViewer:
                 # 'movies' or 'shows'
                 cat = cli_args[2][3:]
 
+            if verbose:
+                print(f"~ Creating a formatted display for '{cat}'.")
+                print("~ This may take a few seconds...")
+                sleep(1)
+                print("~ The formatted data will now be displayed.", end="\n\n")
+            
             print_header(*(i.title() for i in (f_name, cat)))
 
             # popular and anticipated only have title and year
@@ -249,30 +270,49 @@ class TraktHubViewer:
                         elif cat in ("movies", "shows"):
                             _format(uncommon_keys[1], v[uncommon_keys[1]])
         elif query in ("-q", "--query"):
-            header_title = (
-                contents["Basic Info"][i] for i in ("Title", "Release Year")
-            )
-            print_header(*header_title)
-            value_string = partial("{:>5}• {k}{:>5}: {v}".format, " ", " ")
+            cat = cli_args[-1]
+            if cat == "movies":
+                header_title = (
+                    contents["Basic Info"][i] for i in ("Title", "Release Year")
+                )
+                print_header(*header_title)
+                value_string = partial("{:>5}• {k}{:>5}: {v}".format, " ", " ")
 
-            for header_section, header_values in contents.items():
-                print(f"\n\n[{header_section}]")
-                for key, value in header_values.items():
-                    if isinstance(value, (list, tuple)):
-                        if header_section == "Cast":
-                            p = re.compile(r"^(.*?)\s*\[((.*?))\]$")
-                            actors = tuple(
-                                (m.group(1), f"as {m.group(2)}")
-                                for av in value
-                                if (m := p.match(av))
-                            )
-                            for actors_name, role_name in actors:
-                                print(value_string(k=actors_name, v=role_name))
+                for header_section, header_values in contents.items():
+                    print(f"\n\n[{header_section}]")
+                    for key, value in header_values.items():
+                        if isinstance(value, (list, tuple)):
+                            if header_section == "Cast":
+                                p = re.compile(r"^(.*?)\s*\[((.*?))\]$")
+                                actors = tuple(
+                                    (m.group(1), f"as {m.group(2)}")
+                                    for av in value
+                                    if (m := p.match(av))
+                                )
+                                for actors_name, role_name in actors:
+                                    print(value_string(k=actors_name, v=role_name))
+                            else:
+                                value = ", ".join(map(str, value))
+                                print(value_string(k=key, v=value))
                         else:
-                            value = ", ".join(map(str, value))
                             print(value_string(k=key, v=value))
+            elif cat == "people":
+                person = contents["Person"]
+                keyval_sep = '-'*6
+                
+                print_header(person, '')
+                
+                for key, value in contents.items():
+                    if key == "Credits":
+                        print(f"• {key}:")
+                        for idx, credit in value.items():
+                            print(f"{'':2}{idx}:{keyval_sep}{credit}")
                     else:
-                        print(value_string(k=key, v=value))
+                        if key == "Description":
+                            value = '\n' + value + '\n'
+                        print(
+                            f"• {key}:{keyval_sep}{value}"
+                        )
 
 
 class TraktHub:
@@ -291,16 +331,18 @@ class TraktHub:
 
     _APIParser = APIParser
 
-    __slots__ = ("_query", "_category", "_main_url")
+    __slots__ = ("_query", "_category", "_main_url", "_page_number")
 
     def __init__(
         self,
         *,
         query: Optional[str] = "",
         category: Literal["people", "movies", "shows", "calendars"],
+        **kwargs,
     ):
-        self._query, self._category = self._validate_args(query, category)
-
+        self._query, self._category, self._page_number = self._validate_args(
+            query, category, **kwargs
+        )
         self._main_url = self._get_url()
 
     def _get_url(self):
@@ -309,14 +351,20 @@ class TraktHub:
             main_url += self._query
         return main_url
 
-    def _validate_args(self, *args):
+    def _validate_args(self, *args, **kwargs):
         query, category = args
+        page_number = kwargs.get("page_number", "")
 
         if any((map(lambda x: not isinstance(x, str), (query, category)))):
-            raise CHException("All arguments must be strings.")
+            raise THException("All arguments must be strings.")
+
+        if not isinstance(page_number, IntOrStr):
+            raise THException(
+                f"Page number must be an integer or a string, not {type(page_number).__name__}."
+            )
 
         if category not in (categories := self.CATEGORIES):
-            raise CHException(
+            raise THException(
                 f"{category!r} is invalid and must be one of the following:\n{categories}."
             )
 
@@ -324,7 +372,7 @@ class TraktHub:
             cleaned_query = query.translate(str.maketrans("", "", punctuation))
             query = "/" + "-".join(cleaned_query.split())
 
-        return query, category
+        return query, category, page_number
 
     def _validate_section(self, section: str):
         movie_sections, show_sections, calendars_sections = (
@@ -365,6 +413,9 @@ class TraktHub:
             case "calendars":
                 __raise_exception(calendars_sections)
 
+        if pg := self._page_number:
+            section += f"?page={pg}"
+
         return section
 
     @TraktHubViewer._th_viewer()
@@ -390,7 +441,7 @@ class TraktHub:
             "div",
             class_="col-md-10 col-md-offset-2 col-sm-9 col-sm-offset-3 mobile-title",
         ).h1.get_text(separator="#")
-
+        
         try:
             flix_title, release_year, flix_mature_rating = map(
                 str.strip, flix_title_contents.split("#")
