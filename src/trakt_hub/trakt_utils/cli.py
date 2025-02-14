@@ -11,7 +11,7 @@ from ..trakt_functions.functions import (
     is_popular,
     is_trending,
     trakt_query,
-    printer_,
+    _printer,
 )
 
 
@@ -80,6 +80,18 @@ def cli_parser():
         "-c", "--category", help="Specify the category of the show or movie."
     )
 
+    # Is-Anticipated
+    isanticipated = sub_parsers.add_parser(
+        "is-anticipated", description="Check if a show or movie is anticipated."
+    )
+    isanticipated_args = _add_args(isanticipated)
+    isanticipated_args(
+        "-q", "--query", help="Movie or show to check if it is trending."
+    )
+    isanticipated_args(
+        "-c", "--category", help="Specify the category of the show or movie."
+    )
+
     # Is-Popular
     ispopular = sub_parsers.add_parser(
         "is-popular", description="Check if a show or movie is popular."
@@ -139,4 +151,4 @@ def cli_parser():
 
 
 if __name__ == "__main__":
-    printer_(cli_parser())
+    _printer(cli_parser())

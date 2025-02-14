@@ -57,7 +57,7 @@ def trakt_query(query: str, category: LiteralCategory) -> dict:
     pass
 
 
-def printer_(*args, **kwargs):
+def _printer(*args, **kwargs):
     return TraktHubViewer.print_contents(*args, **kwargs)
 
 
@@ -68,7 +68,7 @@ __all__ = tuple(
         (
             (k not in ("isfunction", "wraps")),
             inspect.isfunction(v),
-            not any((k.startswith("_"), k.endswith("wrapper"))),
+            not any((k.startswith("__"), k.endswith("wrapper"))),
         )
     )
 )

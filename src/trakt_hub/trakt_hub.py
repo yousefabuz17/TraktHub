@@ -14,7 +14,12 @@ from .trakt_utils.type_hints import (
     StrTuple,
 )
 from .trakt_utils.exceptions import CHException, THException
-from .trakt_utils.utils import BeautifulSoup, enumerate_at_one, get_datetime, get_terminal_size
+from .trakt_utils.utils import (
+    BeautifulSoup,
+    enumerate_at_one,
+    get_datetime,
+    get_terminal_size,
+)
 
 
 class TraktHubViewer:
@@ -190,18 +195,26 @@ class TraktHubViewer:
             #   ~ Is-Functions (Returned obj is type boolean)
             print(contents)
             sys.exit()
-        
+
         cli_args = sys.argv
         function_name = query = cli_args[1]
-        terminal_size = get_terminal_size()
-        wspace = ''.center(terminal_size.lines // 2)
-        current_dt = get_datetime(with_time=True)
-        # sep = "-" * (terminal_size.columns // 2)
-        sep = '-'.center(terminal_size.columns // 2)
-        header = "{spacing}TraktHub - {} {}"
+        terminal_col, _terminal_lines = get_terminal_size()
+
+        def print_header(*args):
+            current_dt = get_datetime(with_time=True)
+            sep = "-" * (terminal_col // 2)
+            header = "TraktHub - {} {}"
+            print(sep, end="\n\n")
+            header = header.format(
+                *args,
+            ).center(((terminal_col + len(header)) // 2) - len("TraktHub"), "-")
+            print(header, end="\n\n")
+            print(sep)
+            print(f"Time Now: {current_dt}")
+
         if function_name.startswith("get"):
             # All Get-Functions (Returned obj is type dict)
-            
+
             # 'get-trending' -> 'trending'
             f_name = function_name.split("-")[-1]
             if function_name.endswith("boxoffice"):
@@ -210,16 +223,9 @@ class TraktHubViewer:
             else:
                 # 'movies' or 'shows'
                 cat = cli_args[2][3:]
-            print(sep)
-            print(
-                header.format(
-                    *(i.title() for i in (f_name, cat)),
-                    spacing=wspace,
-                )
-            )
-            print(sep)
-            print(f"Time Now: {current_dt}", end="\n\n")
-            
+
+            print_header(*(i.title() for i in (f_name, cat)))
+
             # popular and anticipated only have title and year
             common_keys = ("Title", "Year")
             diff_set = lambda x: len(set(x) - set(common_keys))
@@ -233,17 +239,40 @@ class TraktHubViewer:
                         def _format(*args):
                             print(
                                 f"{idx}-{v['Title']} ({v['Year']})",
-                                "\n{:>5}• {}: {}".format(' ', *args)
+                                "\n{:>5}• {}: {}".format(" ", *args),
                             )
+
                         uncommon_keys = ("Total Budget", "Watch Count")
-                        
+
                         if cat == "boxoffice":
                             _format(uncommon_keys[0], v[uncommon_keys[0]])
                         elif cat in ("movies", "shows"):
                             _format(uncommon_keys[1], v[uncommon_keys[1]])
         elif query in ("-q", "--query"):
-            cat_arg, cat_value = cli_args[3:] # '-c', <category>
-            
+            header_title = (
+                contents["Basic Info"][i] for i in ("Title", "Release Year")
+            )
+            print_header(*header_title)
+            value_string = partial("{:>5}• {k}{:>5}: {v}".format, " ", " ")
+
+            for header_section, header_values in contents.items():
+                print(f"\n\n[{header_section}]")
+                for key, value in header_values.items():
+                    if isinstance(value, (list, tuple)):
+                        if header_section == "Cast":
+                            p = re.compile(r"^(.*?)\s*\[((.*?))\]$")
+                            actors = tuple(
+                                (m.group(1), f"as {m.group(2)}")
+                                for av in value
+                                if (m := p.match(av))
+                            )
+                            for actors_name, role_name in actors:
+                                print(value_string(k=actors_name, v=role_name))
+                        else:
+                            value = ", ".join(map(str, value))
+                            print(value_string(k=key, v=value))
+                    else:
+                        print(value_string(k=key, v=value))
 
 
 class TraktHub:
@@ -361,12 +390,12 @@ class TraktHub:
             "div",
             class_="col-md-10 col-md-offset-2 col-sm-9 col-sm-offset-3 mobile-title",
         ).h1.get_text(separator="#")
-        
+
         try:
             flix_title, release_year, flix_mature_rating = map(
                 str.strip, flix_title_contents.split("#")
             )
-        except ValueError :
+        except ValueError:
             raise THException(
                 "Unable to parse the contents for the provided query."
                 "\nSome contents may be missing on URL the page."
