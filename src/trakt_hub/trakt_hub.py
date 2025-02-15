@@ -26,6 +26,27 @@ from .trakt_utils.utils import (
 
 
 class TraktHubViewer:
+    """
+    A class to view the contents of the Trakt.tv.
+    
+    #### Attributes:
+        - `category`: The category to view.
+        - `section`: The section to view.
+        - `html_contents`: The HTML contents of the page.
+    
+    #### Methods:
+        - `get_contents`: Get the cleaned contents.
+        - `print_contents`: Print the cleaned contents.
+    
+    #### Raises:
+        - `THException`: If any of the arguments are invalid
+            or if the section is not valid for the category.
+    
+    #### Notes:
+        - The `category` attribute must be a valid category.
+        - The `section` attribute must be a valid section for the category.
+    """
+    
     __slots__ = (
         "_category",
         "_section",
@@ -68,7 +89,6 @@ class TraktHubViewer:
     def _clean_contents(self):
         text_findall_func = partial(self._find_all, text=True)
         common_func = partial(text_findall_func, "div", class_="titles")
-        _enum = partial(enumerate, start=1)
 
         def second_common_func(contents):
             pattern = re.compile(r"(\w+)(.*?)\s(\d{4})$")
@@ -77,7 +97,7 @@ class TraktHubViewer:
                     "Title": match.group(1) + match.group(2),
                     "Year": int(match.group(3)),
                 }
-                for idx, i in _enum(contents)
+                for idx, i in enumerate_at_one(contents)
                 if (match := pattern.match(i))
             }
 
@@ -95,7 +115,7 @@ class TraktHubViewer:
                         "Watch Count": int(match.group(1)),
                         "Year": int(match.group(3)),
                     }
-                    for idx, i in _enum(trending)
+                    for idx, i in enumerate_at_one(trending)
                     if (match := pattern.match(i))
                 }
 
@@ -118,7 +138,7 @@ class TraktHubViewer:
                         "Total Budget": match.group(1),
                         "Year": int(match.group(3)),
                     }
-                    for idx, i in _enum(boxoffice)
+                    for idx, i in enumerate_at_one(boxoffice)
                     if (match := pattern.match(i))
                 }
 
@@ -144,7 +164,7 @@ class TraktHubViewer:
                         },
                         "Time": i.h4.get_text(strip=True),
                     }
-                    for idx, i in _enum(calendar_shows)
+                    for idx, i in enumerate_at_one(calendar_shows)
                 }
 
                 #!> FINISH CALENDARS SECTIONS
@@ -341,6 +361,26 @@ class TraktHubViewer:
 
 
 class TraktHub:
+    """
+    A class to interact with the Trakt.tv.
+    
+    #### Attributes:
+        - `MAIN_DB`: The main URL for Trakt.tv.
+        - `CATEGORIES`: The categories to search for.
+        - `SHOW_SECTIONS`: The sections for shows.
+        - `MOVIE_SECTIONS`: The sections for movies.
+        - `CALENDARS_SECTIONS`: The sections for calendars.
+        - `_ALL_SECTIONS`: All the sections combined.
+    
+    #### Methods:
+        - `track_hub`: Track the hub for the provided section.
+        - `track_person`: Track the person for the provided query.
+        - `search`: Search for the provided query.
+    
+    #### Raises:
+        - `THException`: If any of the arguments are invalid
+            or if the section is not valid for the category.
+    """
     MAIN_DB: str = "https://trakt.tv/"
     CATEGORIES: StrTuple = ("people", "shows", "movies", "calendars")
     SHOW_SECTIONS: StrTuple = ("trending", "popular", "anticipated")

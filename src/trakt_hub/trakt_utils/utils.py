@@ -5,7 +5,6 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from datetime import datetime as dt
 from functools import partial
 from pathlib import Path
-from string import punctuation
 from urllib.parse import urlparse
 from rapidfuzz import fuzz, process
 

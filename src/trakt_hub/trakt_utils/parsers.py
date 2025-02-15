@@ -28,6 +28,26 @@ from .utils import clean_url, soupify, popkwargs, validate_path
 
 @dataclass(unsafe_hash=True)
 class ConfigFileParser:
+    """
+    A class to parse configuration files.
+    
+    #### Attributes:
+        - `file_name`: The name of the file to parse.
+        - `section`: The section to parse.
+    
+    #### Properties:
+        - `full_path`: The full path of the configuration file.
+        - `full_config`: The full configuration of the file.
+    
+    #### Raises:
+        - `FileException`: If there is an error with the file.
+        - `ParserException`: If there is an error with the parser.
+    
+    #### Notes:
+        - The `file_name` attribute must be a valid file.
+        - The `section` attribute must be a valid section in the configuration file.
+    """
+    
     file_name: PathLike = "config.ini"
     section: str = ""
 
@@ -105,6 +125,30 @@ class ConfigFileParser:
 
 @dataclass
 class APIParser:
+    """
+    A class to parse API requests and responses.
+    
+    #### Attributes:
+        - `url`: The URL to parse.
+        - `endpoint`: The endpoint to parse.
+        - `api_key`: The API key to use.
+        - `json_format`: The format to parse the contents in.
+        - `rapid_api`: A boolean indicating if the request is from RapidAPI.
+        - `headers`: The headers to use for the request.
+    
+    #### Methods:
+        - `main_request`: Make the main request to the URL.
+        - `url_request`: Make the request to the URL.
+        - `parse_html_contents`: Parse the HTML contents.
+    
+    #### Properties:
+        - `contents`: The contents of the request.
+    
+    #### Raises:
+        - `ConnectionException`: If there is an error with the connection.
+        - `ParserException`: If there is an error with the parser.
+    """
+    
     url: str = None
     endpoint: Optional[str] = ""
     api_key: Optional[str] = field(default=None, repr=False, kw_only=True)

@@ -1,5 +1,4 @@
 from functools import wraps
-from itertools import chain
 
 from ..trakt_hub import TraktHub
 from ..trakt_utils.exceptions import THException
