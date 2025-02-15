@@ -362,15 +362,64 @@ class TraktHubViewer:
 
 class TraktHub:
     """
-    A class to interact with the Trakt.tv.
+    A class for interacting with the `Trakt.tv` database by categorizing and retrieving
+    information on movies, TV shows, people, and calendar events.
+
+    ### Attributes:
+    `MAIN_DB` : str
+        The base URL for Trakt.tv (`https://trakt.tv/`), used as the primary database.
+
+    `CATEGORIES` : Tuple[str, ...]
+        A tuple representing the main content categories available on Trakt:
+        - people           : Queries related to actors, directors, and crew members.
+        - shows            : Queries related to TV shows.
+        - movies           : Queries related to movies.
+        - calendars        : Queries related to release calendars.
+
+    `SHOW_SECTIONS` : Tuple[str, ...]
+        Sections specific to TV shows:
+        - trending         : Lists currently trending TV shows.
+        - popular          : Lists popular TV shows based on user ratings and activity.
+        - anticipated      : Lists most anticipated TV shows.
+
+    `MOVIE_SECTIONS` : Tuple[str, ...]
+        Sections specific to movies, including those from `_SHOW_SECTIONS`:
+        - trending         : Lists currently trending movies.
+        - popular          : Lists popular movies based on user ratings and activity.
+        - anticipated      : Lists most anticipated movies.
+        - boxoffice        : Lists movies currently performing well at the box office.
+
+    `CALENDARS_SECTIONS` : Tuple[str, ...]
+        Sections specific to Trakt's calendar feature, which organizes upcoming releases:
+        - people           : Calendar section related to people (e.g., actor appearances).
+        - shows            : Calendar section related to TV shows.
+        - movies           : Calendar section related to movies.
+        - premieres        : Lists upcoming movie/show premieres.
+        - new-shows        : Lists newly released TV shows.
+        - finales          : Lists upcoming season/series finales.
+        - dvd              : Lists upcoming DVD/Blu-ray releases.
+
+    `ALL_SECTIONS` : Tuple[str, ...]
+        A combined tuple of all available sections across shows, movies, and calendars.
+
+    ### Parameters:
+        search : str, optional
+            The search term used to query movies, TV shows, or people. Default is an empty string.
+
+        category : Literal["people", "movie", "show", "calendar"], optional
+            The category of content to search within. Must be one of:
+            - "people"   : Searches for actors, directors, or crew members.
+            - "movie"    : Searches for movies.
+            - "show"     : Searches for TV shows.
+            - "calendar" : Searches within the calendar feature.
+
+        section : Optional[Literal["trending", "popular", "anticipated", "boxoffice", "premieres", "new-shows", "finales", "dvd"]], optional
+            A subsection within the selected category to refine search results. Default is an empty string.
+
+        year : Optional[IntOrStr], optional
+            An optional argument to specify a year filter for movies or TV shows.
+            If an error occurs during querying, a valid `year` argument may be required.
     
-    #### Attributes:
-        - `MAIN_DB`: The main URL for Trakt.tv.
-        - `CATEGORIES`: The categories to search for.
-        - `SHOW_SECTIONS`: The sections for shows.
-        - `MOVIE_SECTIONS`: The sections for movies.
-        - `CALENDARS_SECTIONS`: The sections for calendars.
-        - `_ALL_SECTIONS`: All the sections combined.
     
     #### Methods:
         - `track_hub`: Track the hub for the provided section.
@@ -381,6 +430,7 @@ class TraktHub:
         - `THException`: If any of the arguments are invalid
             or if the section is not valid for the category.
     """
+    
     MAIN_DB: str = "https://trakt.tv/"
     CATEGORIES: StrTuple = ("people", "shows", "movies", "calendars")
     SHOW_SECTIONS: StrTuple = ("trending", "popular", "anticipated")
