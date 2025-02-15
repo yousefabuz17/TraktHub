@@ -21,6 +21,7 @@ from .trakt_utils.utils import (
     enumerate_at_one,
     get_datetime,
     get_terminal_size,
+    removefix,
 )
 
 
@@ -202,11 +203,11 @@ class TraktHubViewer:
 
         cli_args = sys.argv
         verbose = False
-        
+
         if "--verbose" in cli_args:
             cli_args.remove("--verbose")
             verbose = True
-        
+
         function_name = query = cli_args[1]
         terminal_col, _terminal_lines = get_terminal_size()
 
@@ -222,11 +223,26 @@ class TraktHubViewer:
             print(sep)
             print(f"Time Now: {current_dt}", end="\n\n")
 
-        if verbose:
-            print("~ Trakt.tv has been successfully accessed and the data has been retrieved.")
-            print("~ Formatting the data for display...")
-            sleep(1)
+        def verbose_output(code: int, c=""):
+            match code:
+                case 1:
+                    print(
+                        "~ Trakt.tv has been successfully accessed and the data has been retrieved."
+                    )
+                    print("~ Formatting the data for display...")
+                    sleep(0.5)
+                case 2:
+                    print(f"~ Creating a formatted display for '{c}'.")
+                    print("~ This may take a few seconds...")
+                    sleep(2)
+                    print("~ The formatted data will now be displayed.", end="\n\n")
+                    sleep(1)
+
+        value_string = partial("{:>5}• {k}{:>5}: {v}".format, " ", " ")
         
+        if verbose:
+            verbose_output(1)
+
         if function_name.startswith("get"):
             # All Get-Functions (Returned obj is type dict)
 
@@ -240,11 +256,8 @@ class TraktHubViewer:
                 cat = cli_args[2][3:]
 
             if verbose:
-                print(f"~ Creating a formatted display for '{cat}'.")
-                print("~ This may take a few seconds...")
-                sleep(1)
-                print("~ The formatted data will now be displayed.", end="\n\n")
-            
+                verbose_output(2)
+
             print_header(*(i.title() for i in (f_name, cat)))
 
             # popular and anticipated only have title and year
@@ -271,12 +284,15 @@ class TraktHubViewer:
                             _format(uncommon_keys[1], v[uncommon_keys[1]])
         elif query in ("-q", "--query"):
             cat = cli_args[-1]
+            
+            if verbose:
+                verbose_output(2, cat)
+            
             if cat == "movies":
                 header_title = (
                     contents["Basic Info"][i] for i in ("Title", "Release Year")
                 )
                 print_header(*header_title)
-                value_string = partial("{:>5}• {k}{:>5}: {v}".format, " ", " ")
 
                 for header_section, header_values in contents.items():
                     print(f"\n\n[{header_section}]")
@@ -298,21 +314,30 @@ class TraktHubViewer:
                             print(value_string(k=key, v=value))
             elif cat == "people":
                 person = contents["Person"]
-                keyval_sep = '-'*6
-                
-                print_header(person, '')
-                
+                keyval_sep = "-" * 6
+
+                print_header(person, "")
+
                 for key, value in contents.items():
                     if key == "Credits":
                         print(f"• {key}:")
                         for idx, credit in value.items():
-                            print(f"{'':2}{idx}:{keyval_sep}{credit}")
+                            print(f"{'':2}{idx}:{keyval_sep} {credit}")
                     else:
                         if key == "Description":
-                            value = '\n' + value + '\n'
-                        print(
-                            f"• {key}:{keyval_sep}{value}"
-                        )
+                            value = "\n" + value + "\n"
+                            keyval_sep = ""
+                        print(f"• {key}:{keyval_sep} {value}")
+            elif cat == "shows":
+                show_title = contents["Basic Info"]["Title"]
+                print_header(show_title, "")
+                
+                for header_section, header_values in contents.items():
+                    print(f"[{header_section}]")
+                    for section, values in header_values.items():
+                        if isinstance(values, tuple):
+                            values = ", ".join(values)
+                        print(value_string(k=section, v=values))
 
 
 class TraktHub:
@@ -430,18 +455,129 @@ class TraktHub:
     def track_person(self):
         return self._APIParser(self._main_url)
 
+    def _search_show(self, __contents):
+        show_title = self._main_url.split("/")[-1].split("-")[0].title()
+        show_stats = __contents.find_all(
+            "div",
+            class_="col-md-10 col-md-offset-2 col-sm-9 col-sm-offset-3 ul-wrapper",
+        )
+
+        def str_translate(str_obj):
+            return str_obj.translate(str.maketrans("#", " ")).strip()
+
+        rating_stats_unclean = next(
+            [
+                i.get_text(strip=True, separator="#")
+                for i in i.find_all("div", class_="number")
+            ]
+            for i in show_stats
+        )
+        rating_stats_unclean.pop(1)
+        (
+            loved_votes,
+            imdb_stats,
+            tmdb_stats,
+            fresh_value,
+            audience,
+            streaming_rank,
+            watchers_count,
+            num_of_plays,
+            collected_count,
+            num_of_comments,
+            num_of_lists,
+            num_favorited,
+        ) = rating_stats_unclean
+
+        loved_perc, loved_votes = str_translate(removefix(loved_votes, "votes")).split()
+        imdb_score, imdb_nums = imdb_stats.split("#")
+        tmdb_score, tmdb_nums = tmdb_stats.split("#")
+        fresh_value = str_translate(fresh_value)
+        audience = str_translate(removefix(audience, "Audience"))
+        justwatch_score, *justwatch_trend = str_translate(streaming_rank).split()
+        justwatch_trend = " ".join(justwatch_trend)
+        (
+            watchers_count,
+            num_of_plays,
+            collected_count,
+            num_of_comments,
+            num_of_lists,
+            num_favorited,
+        ) = [
+            str_translate(removefix(*i))
+            for i in (
+                (watchers_count, "watchers"),
+                (num_of_plays, "plays"),
+                (collected_count, "collected"),
+                (num_of_comments, "comments"),
+                (num_of_lists, "lists"),
+                (num_favorited, "favorited"),
+            )
+        ]
+
+        show_details = __contents.find_all("div", class_="col-lg-8 col-md-7")
+        spoiler = next((i.find("div", id="tagline").text for i in show_details))
+        description = next(
+            (i.find("div", class_="readmore").text for i in show_details)
+        )
+        num_of_seasons = next(
+            (
+                i.find("a", class_="season-count").text
+                for i in __contents.find_all(
+                    "div", class_="col-md-2 col-sm-3 hidden-xs sticky-wrapper"
+                )
+            )
+        )
+
+        organized_data = OrderedDict(
+            {
+                "Basic Info": OrderedDict(
+                    {
+                        "Title": show_title,
+                        "Total Seasons": num_of_seasons,
+                    }
+                ),
+                "Ratings": OrderedDict(
+                    {
+                        "Loved %": (loved_perc, loved_votes),
+                        "IMDb": (imdb_score, imdb_nums),
+                        "TMDb": (tmdb_score, tmdb_nums),
+                        "Rotten Tomatoe": fresh_value,
+                        "JustWatch": (justwatch_score, justwatch_trend),
+                        "Audience %": audience,
+                    }
+                ),
+                "Total Engagement": OrderedDict(
+                    {
+                        "Watchers": watchers_count,
+                        "Plays": num_of_plays,
+                        "Collected": collected_count,
+                        "Comments": num_of_comments,
+                        "Personal Lists": num_of_lists,
+                        "Favorited": num_favorited,
+                    }
+                ),
+                "Narrative": OrderedDict(
+                    {
+                        "Spoiler": spoiler,
+                        "Description": description,
+                    }
+                ),
+            }
+        )
+
+        return organized_data
+
     def search(self):
         parser = self._APIParser(self._main_url)
         parsed_contents = parser.parse_html_contents(parser.contents)
-
-        def _removefix(_string, obj, *, post: bool = True):
-            return getattr(_string, "removesuffix" if post else "removeprefix")(obj)
+        if self._category == "shows":
+            return self._search_show(parsed_contents)
 
         flix_title_contents = parsed_contents.find(
             "div",
             class_="col-md-10 col-md-offset-2 col-sm-9 col-sm-offset-3 mobile-title",
         ).h1.get_text(separator="#")
-        
+
         try:
             flix_title, release_year, flix_mature_rating = map(
                 str.strip, flix_title_contents.split("#")
@@ -523,7 +659,7 @@ class TraktHub:
 
         country = next(
             (
-                _removefix(i.text, "Country", post=False)
+                removefix(i.text, "Country", post=False)
                 for i in uncleaned_metadata.find_all("li", itemprop="countryOfOrigin")
             )
         )
@@ -531,7 +667,7 @@ class TraktHub:
         _languages = next(
             (
                 [
-                    _removefix(i.text, "Languages", post=False)
+                    removefix(i.text, "Languages", post=False)
                     for i in i.find_all("li")
                     if "Languages" in str(i)
                 ]
@@ -544,7 +680,7 @@ class TraktHub:
         _studios = next(
             (
                 [
-                    _removefix(i.text, "Studios", post=False)
+                    removefix(i.text, "Studios", post=False)
                     for i in i.find_all("li")
                     if "Studios" in str(i)
                 ]

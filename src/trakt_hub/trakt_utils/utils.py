@@ -88,6 +88,10 @@ def page_executor(
     return page_contents
 
 
+def removefix(_string, obj, *, post: bool = True):
+    return getattr(_string, "removesuffix" if post else "removeprefix")(obj)
+
+
 def executor(func: Callable, *args, **kwargs):
     max_w, epool, kwargs = popkwargs("max_workers", "epool", **kwargs)
     maxw_p = lambda p: partial(p, max_workers=max_w)

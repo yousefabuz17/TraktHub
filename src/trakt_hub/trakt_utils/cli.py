@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 
 from .parsers import _metadata_parser
+from ..trakt_hub import TraktHubViewer
 from ..trakt_functions.functions import (
     get_anticipated,
     get_boxoffice,
@@ -10,7 +11,6 @@ from ..trakt_functions.functions import (
     is_popular,
     is_trending,
     trakt_query,
-    _printer
 )
 
 
@@ -103,7 +103,7 @@ def cli_parser():
     )
 
     metadata = _metadata_parser()
-    
+
     args = arg_parser.parse_args()
 
     def mult_args(func):
@@ -154,4 +154,4 @@ def cli_parser():
 
 
 if __name__ == "__main__":
-    _printer(cli_parser())
+    TraktHubViewer.print_contents(cli_parser())
